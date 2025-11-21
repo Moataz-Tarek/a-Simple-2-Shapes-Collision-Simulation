@@ -1,0 +1,348 @@
+using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+
+// CopyRight to Moataz Tarek 2025
+
+namespace _2Squares
+{
+    public partial class Form1 : Form
+    {
+        // Shapes positions
+        private float Shape1x;
+        private float Shape2x;
+        private int ShapeHeight;
+        private int ShapeWidth;
+        private int Shape1Y;
+        private int Shape2Y;
+
+        private float  Speed = 5f; // movement speed
+        private string Shape1Force = "Push";
+        private string Shape2Force = "Push"; // "Push" or "Pull"
+
+        // what shapes are default are rectangles
+        private string Shape1 = "Rectangle";
+        private string Shape2 = "Rectangle";
+
+        private Color Shape1Color = Color.Red;
+        private Color Shape2Color = Color.Blue;
+
+        private Brush Shape1Brush;
+        private Brush Shape2Brush;
+
+        private Timer animationTimer = new Timer();
+
+        void StaticParticleAnimation()
+        {
+
+        }
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            // Enable double buffering to prevent flicker
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
+                          ControlStyles.UserPaint |
+                          ControlStyles.OptimizedDoubleBuffer, true);
+
+            // Initialize rectangle positions
+            Shape1x = 0;
+            Shape2x = this.ClientSize.Width - 200;
+            Shape1Y = 400;
+            Shape2Y = 400;
+            ShapeHeight = 200;
+            ShapeWidth = 200;
+
+            // set the maximum value of the Y_axix for each shape's TrackBar
+            trackBarShape1Yaxis.Maximum = this.Height;
+            trackBarShape2Yaxis.Maximum = this.Height;
+
+            trackBarShape1Yaxis.Value = Shape1Y;
+            trackBarShape2Yaxis.Value = Shape2Y;
+
+            // set the maximum width and height for the shapes corrisponding to the window 
+            trackBarShapeWidth.Maximum = this.Width;
+            trackBarShapeHeight.Maximum = this.Height;
+
+            trackBarShapeWidth.Value  = ShapeWidth;
+            trackBarShapeHeight.Value = ShapeHeight;
+
+            // Setup timer
+            animationTimer.Interval = 10; // faster update ~100 FPS
+            animationTimer.Tick += AnimationTimer_Tick;
+            animationTimer.Start();
+
+
+            // Give Each Brush Shape Color
+            Shape1Brush = new SolidBrush(Shape1Color);
+            Shape2Brush = new SolidBrush(Shape2Color);
+
+            // Set Speed and Frames
+
+
+            // Optional: handle resizing
+            this.Resize += Form1_Resize;
+            
+        }
+
+        
+        private void Form1_Resize(object sender, EventArgs e)      
+        {
+            // Adjust rectangles if the form is resized
+            trackBarShape1Yaxis.Maximum = this.Height;
+            trackBarShape2Yaxis.Maximum = this.Height;
+
+            trackBarShapeWidth. Maximum = this.Width;
+            trackBarShapeHeight.Maximum = this.Height;
+
+            Shape2x = Math.Min(Shape2x, this.ClientSize.Width - ShapeWidth);
+            Shape1x = Math.Max(Shape1x, 0);
+            Invalidate();
+        }
+
+        
+        private void AnimationTimer_Tick(object sender, EventArgs e)
+        {
+            // Timer tick: move rectangles and request repaint
+            CheckWhatCollided();
+            MoveRectangles();
+            Invalidate(); // triggers Paint event
+        }
+
+        
+        private void CheckWhatCollided()
+        {
+            // Check collision with each other or window edges
+
+            // If rectangles touch
+            if (Shape1x + ShapeWidth >= Shape2x && ((Shape1Y >= Shape2Y && Shape1Y <= Shape2Y + ShapeHeight) || (Shape2Y >= Shape1Y && Shape2Y <= Shape1Y + ShapeHeight)))
+            {
+                Shape1Force = "Pull";
+                Shape2Force = "Pull";
+            }
+
+            // If rectangles touch window edges 
+            // the else if is to check if rectangles did not touch each other at all so when colliding with window change force
+            if (Shape1x <= 0)
+                Shape1Force = "Push";
+            else if (Shape1x + ShapeWidth >= this.ClientSize.Width)
+                Shape1Force = "Pull";
+            if (Shape2x + ShapeWidth >= this.ClientSize.Width)
+                Shape2Force = "Push";
+            else if (Shape2x <= 0)
+                Shape2Force = "Pull";
+        }
+
+
+        private void MoveRectangles()
+        {
+            // Move rectangles based on current force
+
+            if (Shape1Force == "Push")
+            {
+                Shape1x += Speed;
+            }
+            else
+            { Shape1x -= Speed;}
+
+            if (Shape2Force == "Push")
+            {
+                Shape2x -= Speed;
+            }
+            else
+            { Shape2x += Speed; }
+
+
+            // Clamp positions to stay within form
+            Shape1x = Math.Max(0, Math.Min(Shape1x, this.ClientSize.Width - ShapeWidth));
+            Shape2x = Math.Max(0, Math.Min(Shape2x, this.ClientSize.Width - ShapeWidth));
+        }
+
+        
+        private void Form1_Paint(object sender, PaintEventArgs e)
+        {
+
+            e.Graphics.Clear(Color.White);
+            
+            string shape1 = comboBox1.SelectedItem?.ToString() ?? "Rectangle";
+            string shape2 = comboBox2.SelectedItem?.ToString() ?? "Rectangle";
+
+            DrawShape(e.Graphics, shape1, Shape1x, Shape1Y, Shape1Brush);
+            DrawShape(e.Graphics, shape2, Shape2x, Shape2Y, Shape2Brush);
+        }
+
+        // Central method to draw a shape based on string
+        private void DrawShape(Graphics e, string shape, float x, float y, Brush brush)
+        {
+            // Central method to draw a shape based on string
+            switch (shape)
+            {
+                case "Rectangle":
+
+                    e.FillRectangle(brush, x, y, ShapeWidth, ShapeHeight);
+                    break;
+
+                case "Ellipse":
+
+                    e.FillEllipse(brush, x, y, ShapeWidth, ShapeHeight);
+                    break;
+
+                case "Polygon":
+
+                    Point[] polygon = 
+                    {
+                    new Point((int)x, (int)y),
+                    new Point((int)x + ShapeHeight / 2, (int)y + ShapeHeight),
+                    new Point((int)x + ShapeWidth, (int)y)
+                    };
+                    e.FillPolygon(brush, polygon);
+                    break;
+
+                case "ClosedCurve":
+
+                    Point[] curve = 
+                    {
+                    new Point((int)x, (int)y),
+                    new Point((int)x + ShapeHeight / 2, (int)y + ShapeHeight),
+                    new Point((int)x + ShapeWidth, (int)y),
+                    new Point((int)x + (ShapeWidth / 2) + (ShapeWidth / 4), (int)y - (ShapeWidth / 4))
+                    };
+                    e.FillClosedCurve(brush, curve);
+                    break;
+
+                case "Pie":
+
+                    e.FillPie(brush, x, y, ShapeWidth, ShapeHeight, 0, 180);
+                    break;
+
+                case "Path":
+
+                    using (GraphicsPath path = new GraphicsPath())
+                    {
+                        path.AddEllipse(x, y, ShapeWidth, ShapeHeight);
+                        path.AddRectangle(new Rectangle((int)x + (ShapeWidth / 4), (int)y + (ShapeWidth / 4), ShapeWidth / 2, ShapeHeight /2 ));
+                        e.FillPath(brush, path);
+                    }
+                    break;
+
+            }
+        }
+
+        private void Stop_Click(object sender, EventArgs e)
+        {
+            animationTimer.Stop();
+        }
+
+        private void Start_Click(object sender, EventArgs e)
+        {
+            animationTimer.Start();
+        }
+
+        private void Reset_Click(object sender, EventArgs e)
+        {
+            
+            ShapeWidth  = 200;
+            ShapeHeight = 200;
+            Shape1x = 0;
+            Shape2x = this.ClientSize.Width - ShapeWidth;
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+
+        private void btnShape1Color_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.Color = Shape1Color;
+                if (cd.ShowDialog() == DialogResult.OK)
+                {
+                    Shape1Color = cd.Color;
+                    Shape1Brush = new SolidBrush(Shape1Color); // update the brush
+                    btnShape1Color.BackColor = Shape1Color;
+                    Invalidate();
+                }
+            }
+        }
+
+        private void btnShape2Color_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.Color = Shape2Color;
+                if (cd.ShowDialog() == DialogResult.OK)
+                {
+                    Shape2Color = cd.Color;
+                    Shape2Brush = new SolidBrush(Shape2Color); // update the brush
+                    btnShape2Color.BackColor = Shape2Color;
+                    Invalidate();
+                }
+            }
+        }
+
+
+        private void trackBarSpeed_ValueChanged(object sender, EventArgs e)
+        {
+            Speed = trackBarSpeed.Value;
+            
+            txtBoxSpeed.Text = Speed.ToString();
+        }
+
+        private void trackBarFrames_ValueChanged(object sender, EventArgs e)
+        {
+            // we adding the 101 here because the window interval actually works faster when it's set to lower value till 1 can't be less than 1
+            animationTimer.Interval = 101 - trackBarFrames.Value;
+
+            txtBoxFrames.Text = trackBarFrames.Value.ToString();
+        }
+
+        private void txtBoxSpeed_TextChanged(object sender, EventArgs e)
+        {
+            if (int.TryParse(txtBoxSpeed.Text, out int value))
+            {
+                if (value >= trackBarSpeed.Minimum && value <= trackBarSpeed.Maximum)
+                {
+                    trackBarSpeed.Value = value;
+                }
+            }
+        }
+
+        private void txtBoxFrames_TextChanged(object sender, EventArgs e)
+        {
+            if (int.TryParse(txtBoxFrames.Text, out int value))
+            {
+                if (value >= trackBarFrames.Minimum && value <= trackBarFrames.Maximum)
+                {
+
+                    trackBarFrames.Value = value;
+                }
+            }
+        }
+
+        private void trackBarShape1Yaxis_ValueChanged(object sender, EventArgs e)
+        {
+            Shape1Y = trackBarShape1Yaxis.Value;
+        }
+
+        private void trackBarShape2Yaxis_ValueChanged(object sender, EventArgs e)
+        {
+            Shape2Y = trackBarShape2Yaxis.Value;
+        }
+
+        private void trackBarShapeWidth_ValueChanged(object sender, EventArgs e)
+        {
+            ShapeWidth = trackBarShapeWidth.Value;
+        }
+
+        private void trackBarShapeHeight_ValueChanged(object sender, EventArgs e)
+        {
+            ShapeHeight = trackBarShapeHeight.Value;
+        }
+    }
+}
